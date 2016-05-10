@@ -69,6 +69,10 @@ public:
 	// draw prepared text blocks
 	float drawLines(const vector<StyledLine> &lines, float x, float y, bool debug=false);
 	
+	// draw lines into a vbo
+	// vbo+numElements are where the output goes
+	float drawLinesToVbo(ofVbo &vbo, int &numElements, const vector<StyledLine> &lines, float x, float y, bool debug=false);
+	
 	// draw and layout blocks
 	float drawAndLayout(vector<StyledText> &blocks, float x, float y, float width, bool debug=false);
 	
@@ -118,8 +122,7 @@ protected:
 	map<string, ofxFontStashStyle> styleIDs;
 
 	vector<SplitTextBlock> splitWords( const vector<StyledText> & blocks);
-
-
+	
 };
 
 #endif /* defined(__ofxFontStash2__ofxFontStash2__) */

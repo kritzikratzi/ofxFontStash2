@@ -385,6 +385,58 @@ float ofxFontStash2::drawLines(const vector<StyledLine> &lines, float x, float y
 	return offY;
 }
 
+
+static void ofxFontStash2__renderDraw(void* userPtr, const float* verts, const float* tcoords, const unsigned int* colors, int nverts)
+{
+	ofMesh &mesh = *(ofMesh*)userPtr;
+	for( int i = 0; i < nverts; i++ ){
+		mesh.addVertex(ofVec2f(verts[2*i+0],verts[2*i+1]));
+	}
+	
+	
+/*	GLFONScontext* gl = (GLFONScontext*)userPtr;
+	if (gl->tex == 0) return;
+	glBindTexture(GL_TEXTURE_2D, gl->tex);
+	glEnable(GL_TEXTURE_2D);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+	glEnableClientState(GL_COLOR_ARRAY);
+	
+	glVertexPointer(2, GL_FLOAT, sizeof(float)*2, verts);
+	glTexCoordPointer(2, GL_FLOAT, sizeof(float)*2, tcoords);
+	glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(unsigned int), colors);
+	
+	glDrawArrays(GL_TRIANGLES, 0, nverts);
+	
+	glDisable(GL_TEXTURE_2D);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	glDisableClientState(GL_COLOR_ARRAY);*/
+}
+
+
+float ofxFontStash2::drawLinesToVbo(ofVbo &vbo, int &numElements, const vector<StyledLine> &lines, float x, float y, bool debug){
+	void (*oldRenderDraw)(void*, const float*, const float*, const unsigned int*,int) = fs->params.renderDraw;
+	void * oldUserPointer = fs->params.userPtr;
+	
+	vbo.clear();
+	// tex allocation issues
+	float w = drawLines(lines, x, y, debug);
+	ofMesh mesh;
+	fs->params.userPtr = &mesh;
+	fs->params.renderDraw = ofxFontStash2__renderDraw;
+	
+	drawLines(lines, x, y, debug);
+	numElements = mesh.getVertices().size();
+	vbo.setMesh(mesh, GL_STATIC_DRAW);
+	
+	fs->params.renderDraw = oldRenderDraw;
+	fs->params.userPtr = oldUserPointer;
+	
+	return w; 
+}
+
+
 float ofxFontStash2::drawAndLayout(vector<StyledText> &blocks, float x, float y, float width, bool debug){
 	return drawLines(layoutLines(blocks, width), x, y, debug );
 }
