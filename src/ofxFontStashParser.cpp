@@ -118,6 +118,11 @@ void ofxFontStashParser::recursiveParse(xml_node & parentNode,
 				}
 				
 			}
+			// not to go full html, but <br/> is quite handy (and \n is ignored by
+			// the current parser settings)
+			else if( strcmp( node.name(), "br") == 0){
+				parsedText.push_back({"\n", style});
+			}
 			
 			recursiveParse(node, nodeStyle, styleIDs,parsedText);
 		}
