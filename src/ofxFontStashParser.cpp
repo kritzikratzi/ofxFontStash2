@@ -41,7 +41,7 @@ ofxFontStashParser::parseText(const string& text, const map<string, ofxFontStash
 	//hansi:
 	// welp, it seems to parse correctly as is,
 	// ie spaces appear to be added correctly without postprocessing.
-	// disabling this for now. only the debug drawing is off by a few pixels when different lines have different heights. 
+	// disabling this for now. only the debug drawing is off by a few pixels when different lines have different heights.
 	if(false){ //TODO!
 		vector<int> spacesToAdd;
 		if (parsedText.size() > 1){
