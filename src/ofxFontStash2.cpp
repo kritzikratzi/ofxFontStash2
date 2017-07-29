@@ -134,7 +134,7 @@ float ofxFontStash2::drawFormatted(const string& styledText, float x, float y){
 
 ofRectangle ofxFontStash2::drawColumn(const string& text, const ofxFontStashStyle &style, float x, float y, float targetWidth, bool debug){
 	vector<StyledText> blocks;
-	blocks.push_back((StyledText){text, style});
+	blocks.push_back({text, style});
 	return drawAndLayout(blocks, x, y, targetWidth, debug);
 }
 
@@ -411,7 +411,7 @@ ofRectangle ofxFontStash2::drawLines(const vector<StyledLine> &lines, float x, f
 			if(debug){ //draw rects on top of each block type
 				ColoredRect cr;
 				switch(lines[i].elements[j].content.type){
-					case WORD: cr.color = ofColor(255, 0, 0, 30); break;
+					case WORD_BLOCK: cr.color = ofColor(255, 0, 0, 30); break;
 					case SEPARATOR: cr.color = ofColor(0, 0, 255, 60); break;
 					case SEPARATOR_INVISIBLE: cr.color = ofColor(0, 255, 255, 30); break;
 				}
@@ -459,7 +459,7 @@ ofRectangle ofxFontStash2::getTextBounds(const vector<StyledLine> &lines, float 
 	ofRectangle total;
 	for(auto & l : lines){
 		for(auto & e : l.elements){
-			if(e.content.type == WORD){
+			if(e.content.type == WORD_BLOCK){
 				total = total.getUnion(e.area);
 			}
 		}
@@ -509,7 +509,7 @@ ofxFontStash2::splitWords( const vector<StyledText> & blocks){
 			if(isSpace || isPunct){
 
 				if(currentWord.size()){
-					SplitTextBlock word = SplitTextBlock(WORD, currentWord, block.style);
+					SplitTextBlock word = SplitTextBlock(WORD_BLOCK, currentWord, block.style);
 					currentWord.clear();
 					wordBlocks.push_back(word);
 				}
@@ -523,7 +523,7 @@ ofxFontStash2::splitWords( const vector<StyledText> & blocks){
 			}
 		}
 		if(currentWord.size()){ //add last word
-			SplitTextBlock word = SplitTextBlock(WORD, currentWord, block.style);
+			SplitTextBlock word = SplitTextBlock(WORD_BLOCK, currentWord, block.style);
 			currentWord.clear();
 			wordBlocks.push_back(word);
 		}
