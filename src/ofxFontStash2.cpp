@@ -181,22 +181,24 @@ const vector<StyledLine> ofxFontStash2::layoutLines(const vector<StyledText> &bl
 		
 	float lineWidth = 0;
 	int wordsThisLine = 0;
-	float currentLineH = 0;
+	float currentWordLineH = 0;
 	
 	float bounds[4];
 	float dx;
 	LineElement le;
+	float accumulatedLineDiff = 0;
+	vector<float> accLineHeighDiff = {0};
 	
 	for(int i = 0; i < words.size(); i++){
 		StyledLine &currentLine = lines.back();
+//		cout << "\t\t\tWORD: " << i << " yy=" << yy << " (" << words[i].styledText.text << endl;
 		
 		TS_START_ACC("word style");
 		if(words[i].styledText.style.valid && currentStyle != words[i].styledText.style ){
-			//cout << "   new style!" << endl;
 			currentStyle = words[i].styledText.style;
 			if(applyStyle(currentStyle)){
-				fonsVertMetrics(fs, NULL, NULL, &currentLineH);
-				currentLineH /= pixelDensity;
+				fonsVertMetrics(fs, NULL, NULL, &currentWordLineH);
+				currentWordLineH /= pixelDensity;
 			}else{
 				ofLogError("ofxFontStash2") << "no style font defined!";
 			}
@@ -211,20 +213,23 @@ const vector<StyledLine> ofxFontStash2::layoutLines(const vector<StyledText> &bl
 			
 			// add a zero-width enter mark. this is used to keep track
 			// of the vertical spacing of empty lines.
-			le = LineElement(words[i], ofRectangle(xx,yy,0,currentLineH));
+			le = LineElement(words[i], ofRectangle(xx,yy,0,currentWordLineH));
 			le.baseLineY = yy;
 			le.x = xx;
-			le.lineHeight = currentLineH;
+			le.lineHeight = currentWordLineH;
 			currentLine.elements.push_back(le);
 			
 			float lineH = lineHeightMultiplier * currentStyle.lineHeightMult * calcLineHeight(currentLine);
 			currentLine.lineH = lineH;
 			currentLine.lineW = xx - x + dx;
 			
-			// no!
-			//i--; //re-calc dimensions of this word on a new line!
-			yy += lineH;
+			if (lines.size() > 1){
+				accumulatedLineDiff += lineH - lines[lines.size()-2].lineH;
+			}
+			accLineHeighDiff.push_back(accumulatedLineDiff);
 			
+			yy += lineH;
+
 			lineWidth = 0;
 			wordsThisLine = 0;
 			xx = x;
@@ -252,25 +257,18 @@ const vector<StyledLine> ofxFontStash2::layoutLines(const vector<StyledText> &bl
 
 			// make tabs the specified number of spaces wide
 			if(words[i].type == SEPARATOR_INVISIBLE && words[i].styledText.text == "\t" && tabWidth != 1){
-				float space4 = tabWidth*dx; // usual case is 4 spaces
-				float space3 = (tabWidth-1)*dx;
-				float toNextTab = space4-fmodf(bounds[2]+space3,space4);
-				float inc = dx/2<toNextTab?(toNextTab-dx):(toNextTab+space4-dx);
+				float space4 = tabWidth * dx; // usual case is 4 spaces
+				float space3 = (tabWidth-1) * dx;
+				float toNextTab = space4 - fmodf(bounds[2] + space3, space4);
+				float inc = dx / 2 < toNextTab ? (toNextTab-dx):(toNextTab + space4 - dx);
 				bounds[2] += inc;
 				dx += inc;
 			}
 			
-			//hansi: using dx instead of bounds[2]-bounds[0]
-			//dx is the right size for spacing out text. bounds give exact area of the char, which isn't so useful here.
-			ofRectangle where = ofRectangle(bounds[0], bounds[1] , dx, bounds[3] - bounds[1]);
-			if(debug){
-				if(words[i].type == SEPARATOR_INVISIBLE) where.height = -currentLineH;
-			}
-			
-			le = LineElement(words[i], where);
+			le = LineElement(words[i], ofRectangle(bounds[0], bounds[1] , dx, bounds[3] - bounds[1]));
 			le.baseLineY = yy;
 			le.x = xx;
-			le.lineHeight = currentLineH;
+			le.lineHeight = currentWordLineH;
 			
 			float nextWidth = lineWidth + dx;
 			
@@ -299,6 +297,12 @@ const vector<StyledLine> ofxFontStash2::layoutLines(const vector<StyledText> &bl
 			TS_START_ACC("new line");
 			//calc height for this line - taking in account all words in the line
 			float lineH = lineHeightMultiplier * currentStyle.lineHeightMult * calcLineHeight(currentLine);
+			
+			if (lines.size() > 1){
+				accumulatedLineDiff += lineH - lines[lines.size()-2].lineH;
+			}
+			accLineHeighDiff.push_back(accumulatedLineDiff);
+			
 			currentLine.lineH = lineH;
 			currentLine.lineW = xx - x;
 			
@@ -308,6 +312,7 @@ const vector<StyledLine> ofxFontStash2::layoutLines(const vector<StyledText> &bl
 			lineWidth = 0;
 			wordsThisLine = 0;
 			xx = x;
+			
 			lines.push_back(StyledLine());
 			TS_STOP_ACC("new line");
 		}
@@ -318,16 +323,30 @@ const vector<StyledLine> ofxFontStash2::layoutLines(const vector<StyledText> &bl
 	StyledLine &currentLine = lines.back();
 	if( currentLine.elements.size() == 0 ){
 		// but at least one spacing character, so we have a line height.
-		le = LineElement(SplitTextBlock(SEPARATOR_INVISIBLE,"",currentStyle), ofRectangle(xx,yy,0,currentLineH));
+		le = LineElement(SplitTextBlock(SEPARATOR_INVISIBLE,"",currentStyle), ofRectangle(xx,yy,0,currentWordLineH));
 		le.baseLineY = yy;
 		le.x = xx;
-		le.lineHeight = currentLineH;
+		le.lineHeight = currentWordLineH;
 		currentLine.elements.push_back(le);
 	}
 	
 	float lineH = lineHeightMultiplier * currentStyle.lineHeightMult * calcLineHeight(currentLine);
 	currentLine.lineH = lineH;
-	currentLine.lineW = xx - x + dx;
+	currentLine.lineW = xx - x;
+	if (lines.size() > 1){
+		accumulatedLineDiff += lineH - lines[lines.size()-2].lineH;
+	}
+	accLineHeighDiff.push_back(accumulatedLineDiff);
+
+	//now that we laid out all the lines and we know all the lineHs, lets re.adjust their line base y.
+	
+	for(int i = 0; i < lines.size(); i++){
+		for(int j = 0; j < lines[i].elements.size(); j++){
+			auto & el = lines[i].elements[j];
+			el.area.y += accLineHeighDiff[i+1];
+			el.baseLineY += accLineHeighDiff[i+1];
+		}
+	}
 	
 	TS_STOP_ACC("last line");
 
@@ -356,7 +375,8 @@ ofRectangle ofxFontStash2::drawLines(const vector<StyledLine> &lines, float x, f
 			ofSetColor(255,0,255,128);
 			ofDrawCircle(offset.x, offset.y, 2.5);
 			ofSetColor(255,45);
-			ofDrawLine(offset.x - 10, offset.y + yy , offset.x + line.lineW , offset.y + yy );
+			float baselineY = line.elements.size()>0?line.elements.front().baseLineY:(offset.y+yy);
+			ofDrawLine(offset.x - 10, baselineY, offset.x + line.lineW , baselineY );
 			yy += line.lineH;
 		}
 		TS_STOP("draw line Heights");
@@ -402,7 +422,8 @@ ofRectangle ofxFontStash2::drawLines(const vector<StyledLine> &lines, float x, f
 
 				fonsDrawText(fs,
 							 el.x * pixelDensity + offset.x,
-							 (el.baseLineY + l.lineH - lines[0].lineH) * pixelDensity + offset.y,
+							 el.baseLineY*pixelDensity,
+							 //(el.baseLineY + l.lineH - lines[0].lineH) * pixelDensity + offset.y,
 							 //pixelDensity * el.area.y + pixelDensity * el.area.height + offset.y,
 							 el.content.styledText.text.c_str(),
 							 NULL);

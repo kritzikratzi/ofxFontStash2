@@ -41,7 +41,7 @@ ofxFontStashParser::parseText(const string& text, const map<string, ofxFontStash
 	//hansi:
 	// welp, it seems to parse correctly as is,
 	// ie spaces appear to be added correctly without postprocessing.
-	// disabling this for now. only the debug drawing is off by a few pixels when different lines have different heights. 
+	// disabling this for now. only the debug drawing is off by a few pixels when different lines have different heights.
 	if(false){ //TODO!
 		vector<int> spacesToAdd;
 		if (parsedText.size() > 1){
@@ -117,6 +117,11 @@ void ofxFontStashParser::recursiveParse(xml_node & parentNode,
 					}
 				}
 				
+			}
+			// not to go full html, but <br/> is quite handy (and \n is ignored by
+			// the current parser settings)
+			else if( strcmp( node.name(), "br") == 0){
+				parsedText.push_back({"\n", style});
 			}
 			
 			recursiveParse(node, nodeStyle, styleIDs,parsedText);
