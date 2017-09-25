@@ -278,6 +278,8 @@ const vector<StyledLine> ofxFontStash2::layoutLines(const vector<StyledText> &bl
 			// ||
 			//this is the 1st word in this line but even that doesnt fit
 			stayOnCurrentLine = nextWidth < targetWidth || (wordsThisLine == 0 && (nextWidth >= targetWidth));
+			
+			//hansi: in case targetWidth>0 we could do a harsh break mid-word instead of cutting it all off
 		}
 		
 		if (stayOnCurrentLine){
@@ -291,7 +293,10 @@ const vector<StyledLine> ofxFontStash2::layoutLines(const vector<StyledText> &bl
 
 		} else if( words[i].type == SEPARATOR_INVISIBLE && words[i].styledText.text == " " ){
 
-			// ignore spaces when moving into the next line!
+			//hansi: add the space so "all the chars" are available for an editor, but don't
+			//add it to the size computation because it won't display anyways.
+			currentLine.elements.push_back(le);
+			wordsThisLine ++;
 			continue;
 
 		} else{ //too long, start a new line
