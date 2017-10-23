@@ -103,7 +103,7 @@ void ofxFontStashParser::recursiveParse(xml_node & parentNode,
 				
 				if((attr = node.attribute("color"))){
 					string hex = attr.value();
-					int slen = hex.length();
+					size_t slen = hex.length();
 					if(slen > 1){
 						hex = hex.substr(1, slen);
 						int alpha = 255;
