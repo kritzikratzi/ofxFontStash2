@@ -472,11 +472,20 @@ ofRectangle ofxFontStash2::drawLines(const vector<StyledLine> &lines, float x, f
 	if(debug){
 		ofSetColor(255);
 	}
-	//return yy - lines.back().elements.back().lineHeight - y; //todo!
-	ofRectangle bounds = getTextBounds(lines, x, y);
-	bounds.x += x;
-	bounds.y += y;
-	return bounds;
+
+	if(lines.size() == 0){
+		return ofRectangle(x,y,0,0);
+	}
+	else{
+		float width = 0;
+		for(auto & l : lines) width = max(width,l.lineW);
+		
+		float height = yy - y;
+		auto & first = lines.front().elements.front();
+		float y0 = y+first.baseLineY-first.lineHeight;
+		
+		return ofRectangle(x,y0,width,height);
+	}
 }
 
 
