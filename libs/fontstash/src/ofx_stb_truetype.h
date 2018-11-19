@@ -3131,6 +3131,7 @@ error:
 
 STBTT_DEF void ofx_stbtt_Rasterize(ofx_stbtt__bitmap *result, float flatness_in_pixels, ofx_stbtt_vertex *vertices, int num_verts, float scale_x, float scale_y, float shift_x, float shift_y, int x_off, int y_off, int invert, void *userdata)
 {
+	flatness_in_pixels = flatness_in_pixels*0.5;
    float scale = scale_x > scale_y ? scale_y : scale_x;
    int winding_count, *winding_lengths;
    ofx_stbtt__point *windings = ofx_stbtt_FlattenCurves(vertices, num_verts, flatness_in_pixels / scale, &winding_lengths, &winding_count, userdata);
