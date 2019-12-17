@@ -91,6 +91,9 @@ public:
 	/// draw already prepared StyledLine«s
 	ofRectangle drawLines(const vector<StyledLine> &lines, float x, float y, bool debug=false);
 	
+	/// draw already prepared StyledLine«s
+	ofRectangle drawLines(vector<StyledLine>::const_iterator from, vector<StyledLine>::const_iterator to, float x, float y, bool debug=false);
+	
 	/// draw and layout blocks
 	ofRectangle drawAndLayout(vector<StyledText> &blocks, float x, float y, float width, bool debug=false);
 

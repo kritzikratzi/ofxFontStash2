@@ -158,7 +158,7 @@ ofRectangle ofxFontStash2::drawAndLayout(vector<StyledText> &blocks, float x, fl
 const vector<StyledLine> ofxFontStash2::layoutLines(const vector<StyledText> &blocks, float targetWidth, bool debug ){
 	float x = 0;
 	float y = 0;
-	if (targetWidth < 0) return vector<StyledLine>();
+	if (targetWidth < 0 || isnan(targetWidth)) return vector<StyledLine>();
 	float xx = x;
 	float yy = y;
 
@@ -361,6 +361,10 @@ const vector<StyledLine> ofxFontStash2::layoutLines(const vector<StyledText> &bl
 
 
 ofRectangle ofxFontStash2::drawLines(const vector<StyledLine> &lines, float x, float y, bool debug){
+	return drawLines(lines.begin(), lines.end(), x, y, debug);
+}
+
+ofRectangle ofxFontStash2::drawLines(vector<StyledLine>::const_iterator lines_begin, vector<StyledLine>::const_iterator lines_end, float x, float y, bool debug){
 
 	float yy = y; //we will increment yy as we draw lines
 	ofVec2f offset;
@@ -376,7 +380,8 @@ ofRectangle ofxFontStash2::drawLines(const vector<StyledLine> &lines, float x, f
 	if(debug){
 		TS_START("draw line Heights");
 		float yy = 0;
-		for( const StyledLine &line : lines ){
+		for(auto it = lines_begin; it != lines_end; ++it){
+			auto & line = *it;
 			ofSetColor(255,0,255,128);
 			ofDrawCircle(offset.x, offset.y, 2.5);
 			ofSetColor(255,45);
@@ -407,14 +412,15 @@ ofRectangle ofxFontStash2::drawLines(const vector<StyledLine> &lines, float x, f
 	}
 	#endif
 
-	for(int i = 0; i < lines.size(); i++){
-		yy += lines[i].lineH;
-		for(int j = 0; j < lines[i].elements.size(); j++){
+	int i = 0;
+	for(auto it = lines_begin; it != lines_end; ++it){
+		auto & line = *it;
+		yy += line.lineH;
+		for(int j = 0; j < line.elements.size(); j++){
 
-			if(lines[i].elements[j].content.type != SEPARATOR_INVISIBLE ){ //no need to draw the invisible chars
+			if(line.elements[j].content.type != SEPARATOR_INVISIBLE ){ //no need to draw the invisible chars
 
-				const StyledLine &l = lines[i];
-				const LineElement &el = l.elements[j];
+				const LineElement &el = line.elements[j];
 
 				if (el.content.styledText.style.valid && drawStyle != el.content.styledText.style ){
 					drawStyle = el.content.styledText.style;
@@ -436,16 +442,17 @@ ofRectangle ofxFontStash2::drawLines(const vector<StyledLine> &lines, float x, f
 			}
 			if(debug){ //draw rects on top of each block type
 				ColoredRect cr;
-				switch(lines[i].elements[j].content.type){
+				switch(line.elements[j].content.type){
 					case WORD_BLOCK: cr.color = ofColor(255, 0, 0, 30); break;
 					case SEPARATOR: cr.color = ofColor(0, 0, 255, 60); break;
 					case SEPARATOR_INVISIBLE: cr.color = ofColor(0, 255, 255, 30); break;
 				}
-				cr.rect = lines[i].elements[j].area;
+				cr.rect = line.elements[j].area;
 				debugRects.push_back(cr);
 			}
 		}
 	}
+	
 	FONT_STASH_POST_DRAW;
 
 	if(debug){ //draw debug rects on top of each word
@@ -473,15 +480,15 @@ ofRectangle ofxFontStash2::drawLines(const vector<StyledLine> &lines, float x, f
 		ofSetColor(255);
 	}
 
-	if(lines.size() == 0){
+	if(lines_begin == lines_end){
 		return ofRectangle(x,y,0,0);
 	}
 	else{
 		float width = 0;
-		for(auto & l : lines) width = max(width,l.lineW);
+		for(auto it = lines_begin; it != lines_end; ++it) width = max(width,it->lineW);
 		
 		float height = yy - y;
-		auto & first = lines.front().elements.front();
+		auto & first = lines_begin->elements.front();
 		float y0 = y+first.baseLineY-first.lineHeight;
 		
 		return ofRectangle(x,y0,width,height);
