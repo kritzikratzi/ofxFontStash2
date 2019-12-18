@@ -112,6 +112,12 @@ public:
 						  ofAlignHorz horAlign = OF_ALIGN_HORZ_LEFT,
 						  bool debug = false);
 	
+	ofRectangle drawLines(const std::vector<StyledLine>::const_iterator lines_begin,
+						  const std::vector<StyledLine>::const_iterator lines_end,
+						  float x, float y,
+						  ofAlignHorz horAlign = OF_ALIGN_HORZ_LEFT,
+						  bool debug = false);
+
 	/// draw and layout blocks
 	ofRectangle drawAndLayout(const std::vector<StyledText> & blocks,
 							  float x, float y,
@@ -122,6 +128,7 @@ public:
 	/// only applies to draw(); return the bbox of the text
 	ofRectangle getTextBounds(const std::string &text, const Style &style, const float x, const float y );
 	ofRectangle getTextBounds(const std::vector<StyledLine> & lines, float x, float y);
+	ofRectangle getTextBounds(const std::vector<StyledLine>::const_iterator lines_begin, const std::vector<StyledLine>::const_iterator lines_end, float x, float y);
 
 	///get font metrics for a particular style
 	void getVerticalMetrics( const Style & style, float* ascender, float* descender, float* lineH);

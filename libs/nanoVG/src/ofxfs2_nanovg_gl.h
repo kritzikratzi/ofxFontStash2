@@ -1174,7 +1174,8 @@ static void glnvg__renderFlush(void* uptr)
 		glFrontFace(GL_CCW);
 		glEnable(GL_BLEND);
 		glDisable(GL_DEPTH_TEST);
-		glDisable(GL_SCISSOR_TEST);
+		//hansi: i have scissor all set up, this ruins it for me ^^
+		//glDisable(GL_SCISSOR_TEST);
 		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 		glStencilMask(0xffffffff);
 		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);

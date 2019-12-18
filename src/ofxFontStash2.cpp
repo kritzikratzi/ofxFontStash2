@@ -549,7 +549,10 @@ void Fonts::layoutLines(const vector<StyledText> &blocks,
 
 
 ofRectangle Fonts::drawLines(const vector<StyledLine> &lines, float x, float y, ofAlignHorz horAlign, bool debug){
+	return drawLines(lines.begin(), lines.end(), x, y, horAlign, debug);
+}
 
+ofRectangle Fonts::drawLines(const vector<StyledLine>::const_iterator lines_begin, vector<StyledLine>::const_iterator lines_end, float x, float y, ofAlignHorz horAlign, bool debug){
 	ofRectangle ret;
 	OFX_FONSTASH2_CHECK_RET
 	ofVec2f offset;
@@ -562,11 +565,11 @@ ofRectangle Fonts::drawLines(const vector<StyledLine> &lines, float x, float y, 
 		float yy = 0;
 		ofSetColor(255,0,255,128);
 		ofDrawCircle(offset.x, offset.y, 2.5);
-		for( int i = 0; i < lines.size(); i++){
+		for( auto it = lines_begin; it != lines_end; ++it){
 			ofSetColor(255,45);
-			ofDrawLine(offset.x - 10, offset.y + yy , offset.x + lines[i].lineW , offset.y + yy );
-			if(i + 1 < lines.size()){
-				yy += lines[i+1].lineH;
+			ofDrawLine(offset.x - 10, offset.y + yy , offset.x + it->lineW , offset.y + yy );
+			if(it + 1 != lines_end){
+				yy += (it+1)->lineH;
 			}
 		}
 		TS_STOP("draw line Heights");
@@ -587,16 +590,15 @@ ofRectangle Fonts::drawLines(const vector<StyledLine> &lines, float x, float y, 
 	TS_START("draw all lines");
 	begin();
 
-	for(int i = 0; i < lines.size(); i++){
+	for(auto it = lines_begin; it != lines_end; ++it){
+		auto & line = *it;
+		yy += line.lineH;
 
-		yy += lines[i].lineH;
+		for(int j = 0; j < line.elements.size(); j++){
 
-		for(int j = 0; j < lines[i].elements.size(); j++){
+			if(line.elements[j].content.type != SEPARATOR_INVISIBLE ){ //no need to draw the invisible chars
 
-			if(lines[i].elements[j].content.type != SEPARATOR_INVISIBLE ){ //no need to draw the invisible chars
-
-				const StyledLine &l = lines[i];
-				const LineElement &el = l.elements[j];
+				const LineElement &el = line.elements[j];
 
 				if (drawStyle != el.content.styledText.style ){
 					drawStyle = el.content.styledText.style;
@@ -605,19 +607,19 @@ ofRectangle Fonts::drawLines(const vector<StyledLine> &lines, float x, float y, 
 
 				float dx = ofxfs2_nvgText(ctx,
 								   el.x + offset.x,
-								   (el.baseLineY + l.lineH - lines[0].lineH) + offset.y,
+								   (el.baseLineY + line.lineH - lines_begin->lineH) + offset.y,
 								   el.content.styledText.text.c_str(),
 								   NULL);
 			}
 
 			if(debug){ //draw rects on top of each block type
 				ColoredRect cr;
-				switch(lines[i].elements[j].content.type){
+				switch(line.elements[j].content.type){
 					case BLOCK_WORD: cr.color = ofColor(255, 0, 0, 30); break;
 					case SEPARATOR: cr.color = ofColor(0, 0, 255, 60); break;
 					case SEPARATOR_INVISIBLE: cr.color = ofColor(0, 255, 255, 30); break;
 				}
-				cr.rect = lines[i].elements[j].area;
+				cr.rect = line.elements[j].area;
 				debugRects.emplace_back(cr);
 			}
 		}
@@ -637,18 +639,21 @@ ofRectangle Fonts::drawLines(const vector<StyledLine> &lines, float x, float y, 
 		ofSetColor(255);
 	}
 	//return yy - lines.back().elements.back().lineHeight - y; //todo!
-	ofRectangle bounds = getTextBounds(lines, x, y);
+	ofRectangle bounds = getTextBounds(lines_begin, lines_end, x, y);
 	//end();
 	return bounds;
 }
 
 
 ofRectangle Fonts::getTextBounds(const vector<StyledLine> &lines, float x, float y){
+	return getTextBounds(lines.begin(), lines.end(), x, y);
+}
 
+ofRectangle Fonts::getTextBounds(const std::vector<StyledLine>::const_iterator lines_begin, const std::vector<StyledLine>::const_iterator lines_end, float x, float y){
 	ofRectangle ret;
 	OFX_FONSTASH2_CHECK_RET
-	for(const auto & l : lines){
-		for(const auto & e : l.elements){
+	for(auto it = lines_begin; it != lines_end; ++it){
+		for(const auto & e : it->elements){
 			if(e.content.type == BLOCK_WORD){
 				ret.growToInclude(e.area);
 			}
@@ -809,7 +814,9 @@ void Fonts::applyOFMatrix(){ //from ofxNanoVG
 	ofMatrix4x4 ofMatrix = ofGetCurrentMatrix(OF_MATRIX_MODELVIEW);
 	ofVec2f viewSize = ofVec2f(ofGetViewportWidth(), ofGetViewportHeight());
 
-	ofVec2f translate = ofVec2f(ofMatrix(3, 0), ofMatrix(3, 1)) + viewSize/2;
+	// hansi: remove translation to the center of the viewport
+	// (is this required for the other renderers?)
+	ofVec2f translate = ofVec2f(ofMatrix(3, 0), ofMatrix(3, 1));
 	ofVec2f scale(ofMatrix(0, 0), ofMatrix(1, 1));
 	ofVec2f skew(ofMatrix(0, 1), ofMatrix(1, 0));
 
