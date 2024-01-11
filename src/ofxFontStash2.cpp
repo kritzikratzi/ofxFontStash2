@@ -334,6 +334,7 @@ void Fonts::layoutLines(const vector<StyledText> &blocks,
 	if (targetWidth < 0) return;
 	float x = 0;
 	float y = 0;
+	if (targetWidth < 0 || isnan(targetWidth)) return;
 	float xx = x;
 	float yy = y;
 
@@ -448,6 +449,8 @@ void Fonts::layoutLines(const vector<StyledText> &blocks,
 			// ||
 			//this is the 1st word in this line but even that doesnt fit
 			stayOnCurrentLine = nextWidth < targetWidth || (wordsThisLine == 0 && (nextWidth >= targetWidth));
+			
+			//hansi: in case targetWidth>0 we could do a harsh break mid-word instead of cutting it all off
 		}
 		
 		if (stayOnCurrentLine){
@@ -461,7 +464,10 @@ void Fonts::layoutLines(const vector<StyledText> &blocks,
 
 		} else if( words[i].type == SEPARATOR_INVISIBLE && words[i].styledText.text == " " ){
 
-			// ignore spaces when moving into the next line!
+			//hansi: add the space so "all the chars" are available for an editor, but don't
+			//add it to the size computation because it won't display anyways.
+			currentLine.elements.push_back(le);
+			wordsThisLine ++;
 			continue;
 
 		} else{ //too long, start a new line
@@ -508,12 +514,14 @@ void Fonts::layoutLines(const vector<StyledText> &blocks,
 	}
 	accLineHeighDiff.emplace_back(accumulatedLineDiff);
 
-	//now that we laid out all the lines and we know all the lineHs, lets re.adjust their line base y.
+	//now that we laid out all the lines and we know all the lineHs, lets readjust their line base y.
 
 	for(int i = 0; i < outputLines.size(); i++){
 		for(int j = 0; j < outputLines[i].elements.size(); j++){
 			auto & el = outputLines[i].elements[j];
 			el.area.y += accLineHeighDiff[i+1];
+			//hansi: really?
+			el.baseLineY += accLineHeighDiff[i+1];
 		}
 	}
 
@@ -528,6 +536,8 @@ void Fonts::layoutLines(const vector<StyledText> &blocks,
 						el.x += lastInvW;
 						el.area.x += lastInvW;
 					}
+					//hansi: i suppose i will have to change this
+					//make the element 0-size instead (need this for the editor)
 					l.elements.erase(l.elements.begin() + l.elements.size() - 1);
 					l.boxW -= lastInvW;
 					//l.lineW -= lastInvW;
@@ -549,12 +559,18 @@ void Fonts::layoutLines(const vector<StyledText> &blocks,
 
 
 ofRectangle Fonts::drawLines(const vector<StyledLine> &lines, float x, float y, ofAlignHorz horAlign, bool debug){
+	return drawLines(lines.begin(), lines.end(), x, y, horAlign, debug);
+}
+
+ofRectangle Fonts::drawLines(vector<StyledLine>::const_iterator lines_begin, vector<StyledLine>::const_iterator lines_end, float x, float y, ofAlignHorz horAlign, bool debug){
 
 	ofRectangle ret;
 	OFX_FONSTASH2_CHECK_RET
 	ofVec2f offset;
 	offset.x = x;
 	offset.y = y;
+	
+	int N = std::distance(lines_begin, lines_end);
 
 	//debug line heights!
 	if(debug){
@@ -562,12 +578,14 @@ ofRectangle Fonts::drawLines(const vector<StyledLine> &lines, float x, float y, 
 		float yy = 0;
 		ofSetColor(255,0,255,128);
 		ofDrawCircle(offset.x, offset.y, 2.5);
-		for( int i = 0; i < lines.size(); i++){
+		for(auto it = lines_begin; it != lines_end; ++it){
+			auto & line = *it;
 			ofSetColor(255,45);
-			ofDrawLine(offset.x - 10, offset.y + yy , offset.x + lines[i].lineW , offset.y + yy );
-			if(i + 1 < lines.size()){
-				yy += lines[i+1].lineH;
-			}
+			float baselineY = line.elements.size()>0?line.elements.front().baseLineY:(offset.y+yy);
+			ofDrawLine(offset.x - 10, baselineY, offset.x + line.lineW , baselineY );
+			// hansi: don't add lineH for the last line?
+			// this was inside if(i + 1 < lines.size())
+			yy += line.lineH;
 		}
 		TS_STOP("draw line Heights");
 	}
@@ -587,16 +605,14 @@ ofRectangle Fonts::drawLines(const vector<StyledLine> &lines, float x, float y, 
 	TS_START("draw all lines");
 	begin();
 
-	for(int i = 0; i < lines.size(); i++){
+	int i = 0;
+	for(auto it = lines_begin; it != lines_end; ++it){
+		const StyledLine & line = *it;
+		yy += line.lineH;
+		for(int j = 0; j < line.elements.size(); j++){
+			if(line.elements[j].content.type != SEPARATOR_INVISIBLE ){ //no need to draw the invisible chars
 
-		yy += lines[i].lineH;
-
-		for(int j = 0; j < lines[i].elements.size(); j++){
-
-			if(lines[i].elements[j].content.type != SEPARATOR_INVISIBLE ){ //no need to draw the invisible chars
-
-				const StyledLine &l = lines[i];
-				const LineElement &el = l.elements[j];
+				const LineElement &el = line.elements[j];
 
 				if (drawStyle != el.content.styledText.style ){
 					drawStyle = el.content.styledText.style;
@@ -605,19 +621,20 @@ ofRectangle Fonts::drawLines(const vector<StyledLine> &lines, float x, float y, 
 
 				float dx = ofxfs2_nvgText(ctx,
 								   el.x + offset.x,
-								   (el.baseLineY + l.lineH - lines[0].lineH) + offset.y,
+								   //hansi: what about el.baseLineY*pixelDensity,
+								   (el.baseLineY + line.lineH - (*lines_begin).lineH) + offset.y,
 								   el.content.styledText.text.c_str(),
 								   NULL);
 			}
 
 			if(debug){ //draw rects on top of each block type
 				ColoredRect cr;
-				switch(lines[i].elements[j].content.type){
+				switch(line.elements[j].content.type){
 					case BLOCK_WORD: cr.color = ofColor(255, 0, 0, 30); break;
 					case SEPARATOR: cr.color = ofColor(0, 0, 255, 60); break;
 					case SEPARATOR_INVISIBLE: cr.color = ofColor(0, 255, 255, 30); break;
 				}
-				cr.rect = lines[i].elements[j].area;
+				cr.rect = line.elements[j].area;
 				debugRects.emplace_back(cr);
 			}
 		}
@@ -637,17 +654,37 @@ ofRectangle Fonts::drawLines(const vector<StyledLine> &lines, float x, float y, 
 		ofSetColor(255);
 	}
 	//return yy - lines.back().elements.back().lineHeight - y; //todo!
-	ofRectangle bounds = getTextBounds(lines, x, y);
+	ofRectangle bounds = getTextBounds(lines_begin, lines_end, x, y);
 	//end();
 	return bounds;
+//hansi: review this old stuff? is it needed?
+/*
+	if(lines_begin == lines_end){
+		return ofRectangle(x,y,0,0);
+	}
+	else{
+		float width = 0;
+		for(auto it = lines_begin; it != lines_end; ++it) width = max(width,it->lineW);
+		
+		float height = yy - y;
+		auto & first = lines_begin->elements.front();
+		float y0 = y+first.baseLineY-first.lineHeight;
+		
+		return ofRectangle(x,y0,width,height);
+	}
+*/
 }
 
-
 ofRectangle Fonts::getTextBounds(const vector<StyledLine> &lines, float x, float y){
+	return getTextBounds(lines.begin(), lines.end(), x, y);
+}
+
+ofRectangle Fonts::getTextBounds(vector<StyledLine>::const_iterator lines_begin, vector<StyledLine>::const_iterator lines_end, float x, float y){
 
 	ofRectangle ret;
 	OFX_FONSTASH2_CHECK_RET
-	for(const auto & l : lines){
+	for(auto it = lines_begin; it != lines_end; ++it){
+		const auto & l = *it;
 		for(const auto & e : l.elements){
 			if(e.content.type == BLOCK_WORD){
 				ret.growToInclude(e.area);
@@ -809,7 +846,7 @@ void Fonts::applyOFMatrix(){ //from ofxNanoVG
 	ofMatrix4x4 ofMatrix = ofGetCurrentMatrix(OF_MATRIX_MODELVIEW);
 	ofVec2f viewSize = ofVec2f(ofGetViewportWidth(), ofGetViewportHeight());
 
-	ofVec2f translate = ofVec2f(ofMatrix(3, 0), ofMatrix(3, 1)) + viewSize/2;
+	ofVec2f translate = ofVec2f(ofMatrix(3, 0), ofMatrix(3, 1));
 	ofVec2f scale(ofMatrix(0, 0), ofMatrix(1, 1));
 	ofVec2f skew(ofMatrix(0, 1), ofMatrix(1, 0));
 

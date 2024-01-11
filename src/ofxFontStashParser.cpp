@@ -134,11 +134,15 @@ void Parser::recursiveParse(xml_node & parentNode,
 
 	//bool debug = false;
 	Style style;
+	//hansi: are cases like <font id=1>a</font> b <font id=2>c</font> and <b>a<i>b</i>c</b>
+	// working?
 	for(xml_node & node : parentNode){
 		// handle nodes
 		if( node.type() == node_element ){
 
 			// <style id = "" ></style> //////////////////////////////////////////////////////
+			// local style for this node, so we don't mess with our siblings' styles
+			
 			if( strcmp( node.name(), "style") == 0){
 				//if(debug) ofLogNotice("ofxFontStash2::Parser") << "NODE<style> stack:" << styleStack.size();
 				xml_attribute attr;
