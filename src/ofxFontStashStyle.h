@@ -100,6 +100,7 @@ struct LineElement{
 
 
 struct StyledLine{
+	int lineNumber = 0; // line number, starting at 0. because of soft-wrap, the same line number might show up multiple times
 	float lineH = 0;
 	float lineW = 0;
 	vector<LineElement> elements;

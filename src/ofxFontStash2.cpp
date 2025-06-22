@@ -188,6 +188,7 @@ const vector<StyledLine> ofxFontStash2::layoutLines(const vector<StyledText> &bl
 	LineElement le;
 	float accumulatedLineDiff = 0;
 	vector<float> accLineHeighDiff = {0};
+	int lineNumber = 0;
 	
 	for(int i = 0; i < words.size(); i++){
 		StyledLine &currentLine = lines.back();
@@ -233,7 +234,10 @@ const vector<StyledLine> ofxFontStash2::layoutLines(const vector<StyledText> &bl
 			lineWidth = 0;
 			wordsThisLine = 0;
 			xx = x;
-			lines.push_back(StyledLine());
+			
+			StyledLine next;
+			next.lineNumber = ++lineNumber;
+			lines.push_back(std::move(next));
 			continue;
 
 		}else{ //non-linebreaks
@@ -318,7 +322,9 @@ const vector<StyledLine> ofxFontStash2::layoutLines(const vector<StyledText> &bl
 			wordsThisLine = 0;
 			xx = x;
 			
-			lines.push_back(StyledLine());
+			StyledLine next;
+			next.lineNumber = lineNumber;
+			lines.push_back(std::move(next));
 			TS_STOP_ACC("new line");
 		}
 	}
@@ -546,7 +552,7 @@ ofxFontStash2::splitWords( const vector<StyledText> & blocks){
 		for(auto c: ofUTF8Iterator(blockText)){
 
 			bool isSpace = std::isspace<wchar_t>(c,loc);
-			bool isPunct = std::ispunct<wchar_t>(c,loc);
+			bool isPunct = c != '_' && std::ispunct<wchar_t>(c,loc);
 			
 			if(isSpace || isPunct){
 
